@@ -33,10 +33,9 @@
 
     <script type="text/babel">
         // The entire React application code goes here.
-        // This is the same code from before, now placed inside the HTML.
-
         const App = () => {
             // --- STATE MANAGEMENT ---
+            const [apiKey, setApiKey] = React.useState('');
             const [country, setCountry] = React.useState('USA');
             const [region, setRegion] = React.useState('California');
             const [mood, setMood] = React.useState('Happy');
@@ -53,6 +52,10 @@
 
             // --- API CALL TO GENERATE HASHTAGS ---
             const generateHashtags = React.useCallback(async () => {
+                if (!apiKey) {
+                    setError("Please enter your API key to generate hashtags.");
+                    return;
+                }
                 setIsLoading(true);
                 setError(null);
                 setHashtags([]); 
@@ -63,12 +66,10 @@
                 - Mood: ${mood}
                 - Content Type: ${contentType}
                 Please provide only a space-separated list of hashtags, starting with #. Example: #travelgram #instatravel #wanderlust`;
-                
 
                 const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
-                const apiKey = ""; 
-                const apiUrl = `/.netlify/functions/generate-hashtags`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -78,7 +79,7 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`API request failed with status ${response.status}`);
+                        throw new Error(`API request failed with status ${response.status}. Check if your API key is valid.`);
                     }
 
                     const result = await response.json();
@@ -99,7 +100,7 @@
                 } finally {
                     setIsLoading(false);
                 }
-            }, [country, region, mood, contentType]);
+            }, [country, region, mood, contentType, apiKey]);
 
             // --- COPY TO CLIPBOARD FUNCTIONALITY ---
             const copyToClipboard = () => {
@@ -136,6 +137,20 @@
                             <div className="space-y-5">
                                 <h2 className="text-2xl font-semibold mb-4">1. Define Your Post</h2>
                                 <div>
+                                    <label htmlFor="apiKey" className="block text-sm font-medium text-white/90">Your Gemini API Key</label>
+                                    <input
+                                        type="password"
+                                        id="apiKey"
+                                        value={apiKey}
+                                        onChange={(e) => {
+                                            setApiKey(e.target.value);
+                                            setError(null); // Clear error when user types
+                                        }}
+                                        placeholder="Paste your API key here"
+                                        className="mt-1 block w-full px-3 py-2 bg-white/20 border border-white/30 rounded-md shadow-sm placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                                    />
+                                </div>
+                                <div>
                                     <label htmlFor="country" className="block text-sm font-medium text-white/90">Country</label>
                                     <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white/20 border border-white/30 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 text-white">
                                         {countries.map(c => <option key={c} value={c} className="bg-purple-700">{c}</option>)}
@@ -159,10 +174,10 @@
                                 </div>
                                 <button
                                     onClick={generateHashtags}
-                                    disabled={isLoading}
+                                    disabled={isLoading || !apiKey}
                                     className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-md font-bold text-white bg-gradient-to-r from-pink-500 to-orange-400 hover:from-pink-600 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 focus:ring-offset-purple-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
                                 >
-                                    {isLoading ? 'Generating...' : '✨ Generate Hashtags'}
+                                    {isLoading ? 'Generating...' : !apiKey ? 'Enter API Key to Start' : '✨ Generate Hashtags'}
                                 </button>
                             </div>
 
@@ -176,7 +191,7 @@
                                         </div>
                                     )}
                                     {error && (
-                                        <div className="w-full text-center text-pink-300">
+                                        <div className="w-full text-center text-pink-300 p-2">
                                             <p><strong>Oops!</strong> {error}</p>
                                         </div>
                                     )}
